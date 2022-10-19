@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\CookieIdentifier;
 use App\Models\DocumentType;
 use App\Models\NotaryRecord;
-use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cookie;
@@ -15,8 +14,7 @@ use Illuminate\Support\Str;
 class MainController extends Controller
 {
 	private $appCookieName = 'notaryapp_uid';
-	private $appCookieVal;
-	private $appCookieId;
+	private $appCookieValue;
 
     public function __construct()
     {
@@ -26,33 +24,27 @@ class MainController extends Controller
 
     private function init()
     {
-	    $appCookieVal = Cookie::get($this->appCookieName);
+	    $aCookieVal = Cookie::get($this->appCookieName);
 
-	    if(!$appCookieVal){
+	    if(!$aCookieVal){
 	    	$cookieVal = $this->setAppCookie($this->appCookieName);
-
 		    $cookieIdentifier = new CookieIdentifier();
 			$cookieIdentifier->value      = $cookieVal;
 		    $cookieIdentifier->created_at = date('Y-m-d H:i:s');
 		    $cookieIdentifier->save();
-
-		    $this->appCookieVal = $cookieVal;
-		    $this->appCookieId = $cookieIdentifier->id;
-	    }else{
-		    $this->appCookieVal = Cookie::get($this->appCookieName);
-		    $this->appCookieId = CookieIdentifier::where('value',Cookie::get('notaryapp_uid'))->value('id');
 	    }
     }
 
     public function showNotaryForm()
     {
-    	/*echo $this->appCookieName;
-    	echo $this->appCookieId;*/
-    	//echo CookieIdentifier::where('value',Cookie::get('notaryapp_uid'))->value('id');
-	    $notaryRecords = null;
-		$appCookieId = CookieIdentifier::where('value',Cookie::get('notaryapp_uid'))->value('id');
-	    if($appCookieId){
-	    	$notaryRecords = NotaryRecord::where('cookie_identifier_id', $appCookieId);
+	    $notaryRecords = '';
+		$aCookieId = CookieIdentifier::where('value',Cookie::get($this->appCookieName))->value('id');
+	    if($aCookieId){
+		    $notaryRecords = DB::table('notary_records')
+			    ->leftJoin('document_types', 'notary_records.document_type_id', '=', 'document_types.id')
+			    ->select('notary_records.*','document_types.name')
+			    ->where('notary_records.cookie_identifier_id','=',$aCookieId)
+			    ->get();
 	    }
 
 	    $documentTypes = DocumentType::all();
@@ -63,7 +55,7 @@ class MainController extends Controller
     }
 
     public function processNotaryForm(Request $request)
-    {
+    {                                                            
 	    $this->validate($request,
 		    [
 			    'first_name'    => 'required',
@@ -74,8 +66,10 @@ class MainController extends Controller
 	        ]
 	    );
 
+		$pCookieVal = !empty(Cookie::get($this->appCookieName)) ? Cookie::get($this->appCookieName) : $this->getAppCookieVal();
+
 		$notaryRecord = new NotaryRecord();
-		$notaryRecord->cookie_identifier_id = CookieIdentifier::where('value',Cookie::get('notaryapp_uid'))->value('id');
+		$notaryRecord->cookie_identifier_id = CookieIdentifier::where('value',$pCookieVal)->value('id');
 		$notaryRecord->first_name           = $request->first_name;
 	    $notaryRecord->last_name            = $request->last_name;
 	    $notaryRecord->email                = $request->email;
@@ -93,10 +87,21 @@ class MainController extends Controller
 
     public function setAppCookie($cookieName)
     {
-    	$cookieVal = Str::random(16);
+    	$this->setAppCookieVal(Str::random(16));
+    	$cookieVal = $this->getAppCookieVal();
 	    $minutes = 5;
 	    Cookie::queue($cookieName, $cookieVal, $minutes);
 
 	    return $cookieVal;
+    }
+
+    private function setAppCookieVal($value)
+    {
+    	$this->appCookieValue = $value;
+    }
+
+    private function getAppCookieVal()
+    {
+		return $this->appCookieValue;
     }
 }

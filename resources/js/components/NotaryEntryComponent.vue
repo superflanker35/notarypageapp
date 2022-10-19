@@ -43,26 +43,26 @@
 				</div>
 			</form>
 		</div>
-		<div v-if="document_types" class="post">
+		<div v-if="notary_records[0]" class="post">
 			<div class="postinfotop mt-4">
-				<h2>Ранее сделанные записи</h2>
+				<h2>Ранее сделанные записи под этим id</h2>
 			</div>
 			<div class="col-lg-6 col-md-6 mt-2">
 				<table class="table table-bordered table-responsive">
-						<tr>
-							<td>Адрес эл.почты</td>
-							<td>Имя</td>
-							<td>Фамилия</td>
-							<td>Тип документа</td>
-							<td>Дата приёма</td>
-						</tr>
-						<tr>
-							<td>Адрес эл.почты</td>
-							<td>Имя</td>
-							<td>Фамилия</td>
-							<td>Тип документа</td>
-							<td>Дата приёма</td>
-						</tr>
+					<tr>
+						<td>Адрес эл.почты</td>
+						<td>Имя</td>
+						<td>Фамилия</td>
+						<td>Тип документа</td>
+						<td>Дата приёма</td>
+					</tr>
+					<tr v-for="notary_record in notary_records">
+						<td>{{ notary_record.email }}</td>
+						<td>{{ notary_record.first_name }}</td>
+						<td>{{ notary_record.last_name }}</td>
+						<td>{{ notary_record.name }}</td>
+						<td>{{ notary_record.date | formatDate }}</td>
+					</tr>
 				</table>
 			</div>
 		</div>
@@ -73,10 +73,17 @@
 	import {HasError, AlertError} from 'vform/src/components/bootstrap5';
 	import Datepicker from 'vuejs-datepicker';
 	import {ru} from 'vuejs-datepicker/dist/locale';
+	import moment from 'moment'
 
 	window.Form = Form;
 	Vue.component(HasError.name, HasError);
 	Vue.component(AlertError.name, AlertError);
+
+	Vue.filter('formatDate', function(value) {
+		if (value) {
+			return moment(String(value)).format('DD.MM.YYYY');
+		}
+	});
 
 	export default {
 		data () {
@@ -88,7 +95,8 @@
 					date: '',
 					document_type: '',
 				}),
-				ru: ru
+				ru: ru,
+				notary_records: null
 			}
 		},
 		methods: {
@@ -104,10 +112,20 @@
 		components: {
 			Datepicker
 		},
+
 		props: {
 			id: Number,
 			name: String,
+			first_name: String,
+			last_name: String,
+			email: String,
+			document_type_id: Number,
+			date: Number,
 			document_types: {
+				type: Array,
+				default: []
+			},
+			notary_records: {
 				type: Array,
 				default: []
 			}
